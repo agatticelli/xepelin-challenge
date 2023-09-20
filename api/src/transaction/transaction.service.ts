@@ -19,7 +19,7 @@ export class TransactionService {
       transactionId,
     });
 
-    const account = await this.queryBus.execute(new GetAccountBalanceQuery(transaction.userId, transaction.accountId));
+    const account = await this.queryBus.execute(new GetAccountBalanceQuery(userId, transaction.accountId));
 
     if (transaction.type === TransactionType.WITHDRAWAL && account.balance < transaction.amount) {
       throw new HttpException('Insufficient funds', HttpStatus.CONFLICT);
