@@ -1,0 +1,46 @@
+version: '3.8'
+services:
+  dynamodb:
+    image:  amazon/dynamodb-local
+    restart: always
+    volumes:
+      - dynamodb-data:/home/dynamodblocal/data
+    ports:
+      - 8000:8000
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data/"
+    user: root
+
+  dynamodb-migrator:
+    image: amazon/aws-cli
+    working_dir: /home/dynamodblocal
+    command: dynamodb create-table --cli-input-json file://database/migrations.json
+    volumes:
+      - ./database:/home/dynamodblocal/database
+    depends_on:
+      - dynamodb
+    environment:
+      AWS_ENDPOINT_URL: http://dynamodb:8000
+      AWS_REGION: local
+      AWS_ACCESS_KEY_ID: x
+      AWS_SECRET_ACCESS_KEY: x
+
+  backend:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    environment:
+      AWS_ENDPOINT_URL: http://dynamodb:8000
+      AWS_REGION: local
+      AWS_ACCESS_KEY_ID: x
+      AWS_SECRET_ACCESS_KEY: x
+      TABLE_NAME: accounts
+    ports:
+      - '3000:3000'
+    depends_on:
+      - dynamodb
+    volumes:
+      - ./api/src:/app/src
+
+
+volumes:
+  dynamodb-data:
