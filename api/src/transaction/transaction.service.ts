@@ -3,7 +3,7 @@ import { CreateTransactionDTO, TransactionType } from './dto/create-transaction.
 import { CreateTransactionCommand } from './command/create-transaction.command';
 import { TransactionMapper } from './mapper/transaction.mapper';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { GetAccountBalanceQuery } from 'src/account/query/get-account-balance.query';
+import { GetAccountBalanceQuery } from '../account/query/get-account-balance.query';
 
 @Injectable()
 export class TransactionService {

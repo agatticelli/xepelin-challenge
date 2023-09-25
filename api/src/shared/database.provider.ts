@@ -28,7 +28,7 @@ export class DBConnection {
     this.dbDocumentClient = DynamoDBDocumentClient.from(this.dbClient, translateConfig);
   }
 
-  getClient(): DynamoDBDocumentClient {
+  getDocumentClient(): DynamoDBDocumentClient {
     return this.dbDocumentClient;
   }
 }

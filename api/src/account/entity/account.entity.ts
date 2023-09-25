@@ -1,6 +1,6 @@
 import { AggregateRoot } from '@nestjs/cqrs';
-import { MONEY_DEPOSITED_EVENT, MONEY_WITHDRAWN_EVENT } from 'src/transaction/event/transaction-created.event';
 import { ACCOUNT_CREATED_EVENT } from '../event/account-created.event';
+import { MONEY_DEPOSITED_EVENT, MONEY_WITHDRAWN_EVENT } from '../../transaction/event/transaction-created.event';
 
 interface IAccountEvent {
   accountId: string;

@@ -22,15 +22,4 @@ export class AccountMapper {
 
     return account;
   }
-
-  static toPersistence(account: Account): any {
-    return {
-      pk: `ACCOUNT#${account.id}`,
-      sk: `ACCOUNT#${account.id}`,
-      userId: account.userId,
-      ownerFullName: account.ownerFullName,
-      number: account.number,
-      balance: account.balance,
-    };
-  }
 }

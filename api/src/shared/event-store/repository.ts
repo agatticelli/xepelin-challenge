@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DBConnection } from '../database.provider';
 import { PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { EventStoreMapper } from './mapper';
+import { StreamIdNotFoundError } from './custom-errors';
 
 @Injectable()
 export class EventStorageRepository {
@@ -9,7 +10,7 @@ export class EventStorageRepository {
 
   async saveEvent(streamId: string, version: number, eventType: string, payload: any): Promise<void> {
     const item = EventStoreMapper.toPersistence(streamId, version, eventType, payload);
-    await this.dbConnection.getClient().send(
+    await this.dbConnection.getDocumentClient().send(
       new PutCommand({
         TableName: process.env.TABLE_NAME,
         Item: item,
@@ -18,7 +19,7 @@ export class EventStorageRepository {
   }
 
   async getEvents(streamId: string) {
-    const result = await this.dbConnection.getClient().send(
+    const result = await this.dbConnection.getDocumentClient().send(
       new QueryCommand({
         TableName: process.env.TABLE_NAME,
         KeyConditionExpression: 'pk = :pk',
@@ -27,6 +28,8 @@ export class EventStorageRepository {
         },
       }),
     );
+
+    if (!result.Items.length) throw new StreamIdNotFoundError(streamId);
 
     return result.Items.map((item) => EventStoreMapper.fromPersistence(item));
   }

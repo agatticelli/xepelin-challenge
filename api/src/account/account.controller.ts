@@ -1,18 +1,19 @@
 import { randomUUID } from 'crypto';
-import { Controller, Post, Body, Get, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, UseGuards, Request, HttpException, HttpStatus } from '@nestjs/common';
 import { CreateAccountDTO } from './dto/create-account.dto';
 import { AccountService } from './account.service';
 import { AccountMapper } from './mapper/account.mapper';
 import { AccountDTO } from './dto/account.dto';
-import { AuthGuard } from 'src/auth/auth.guard';
+import { AuthGuard } from '../auth/auth.guard';
+import { AccountNotFoundError } from './custom-errors';
 
 @Controller('accounts')
 export class AccountController {
   constructor(private readonly accountService: AccountService) {}
 
-  @UseGuards(AuthGuard)
   @Post()
-  async createAccount(@Request() request, @Body() createAccountData: CreateAccountDTO): Promise<{ accountId: string }> {
+  @UseGuards(AuthGuard)
+  async createAccount(@Body() createAccountData: CreateAccountDTO, @Request() request): Promise<{ accountId: string }> {
     const userId = request.user.sub;
     const accountId = randomUUID();
 
@@ -21,11 +22,19 @@ export class AccountController {
     return { accountId };
   }
 
-  @UseGuards(AuthGuard)
   @Get(':accountId/balance')
+  @UseGuards(AuthGuard)
   async getBalance(@Request() request, @Param('accountId') accountId: string): Promise<AccountDTO> {
-    const account = await this.accountService.getBalance(request.user.sub, accountId);
+    try {
+      const account = await this.accountService.getBalance(request.user.sub, accountId);
 
-    return AccountMapper.toDTO(account);
+      return AccountMapper.toDTO(account);
+    } catch (err) {
+      if (err instanceof AccountNotFoundError) {
+        throw new HttpException('Not Found', HttpStatus.NOT_FOUND);
+      }
+
+      throw err;
+    }
   }
 }

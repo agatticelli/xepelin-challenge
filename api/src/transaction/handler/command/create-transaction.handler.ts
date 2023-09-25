@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { EventStorageService } from 'src/shared/event-store/service';
-import { CreateTransactionCommand } from 'src/transaction/command/create-transaction.command';
-import { TransactionType } from 'src/transaction/dto/create-transaction.dto';
+import { EventStorageService } from '../../../shared/event-store/service';
+import { CreateTransactionCommand } from '../../../transaction/command/create-transaction.command';
+import { TransactionType } from '../../../transaction/dto/create-transaction.dto';
 import {
   MONEY_DEPOSITED_EVENT,
   MONEY_WITHDRAWN_EVENT,
   TransactionCreatedEvent,
-} from 'src/transaction/event/transaction-created.event';
+} from '../../../transaction/event/transaction-created.event';
 
 @Injectable()
 @CommandHandler(CreateTransactionCommand)

@@ -1,7 +1,7 @@
 import { IEventHandler } from '@nestjs/cqrs';
 import { EventsHandler } from '@nestjs/cqrs/dist/decorators/events-handler.decorator';
-import { TransactionType } from 'src/transaction/dto/create-transaction.dto';
-import { TransactionCreatedEvent } from 'src/transaction/event/transaction-created.event';
+import { TransactionType } from '../../../transaction/dto/create-transaction.dto';
+import { TransactionCreatedEvent } from '../../../transaction/event/transaction-created.event';
 
 @EventsHandler(TransactionCreatedEvent)
 export class TransactionCreatedHandler implements IEventHandler<TransactionCreatedEvent> {

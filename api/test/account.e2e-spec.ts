@@ -1,76 +1,158 @@
-import * as fs from 'fs';
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { GenericContainer, StartedTestContainer, TestContainer } from 'testcontainers';
-import { CreateTableCommand, DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { StartedTestContainer } from 'testcontainers';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { QueryBus } from '@nestjs/cqrs';
+import { Account } from '../src/account/entity/account.entity';
+import { GetAccountBalanceQuery } from '../src/account/query/get-account-balance.query';
+import { createTestTable, deleteTestTable, startDatabaseContainer, useDatabaseConnection } from './utils/database';
+import { useAuth } from './utils/auth';
 
 describe('AccountController', () => {
   let startedContainer: StartedTestContainer;
   let dbClient: DynamoDBClient;
   let dbDocumentClient: DynamoDBDocumentClient;
-  let tableDefinition;
   let app: INestApplication;
+  let moduleFixture: TestingModule;
 
   beforeAll(async () => {
-    const marshallOptions = {
-      convertEmptyValues: false,
-      removeUndefinedValues: false,
-      convertClassInstanceToMap: true,
-    };
+    startedContainer = await startDatabaseContainer();
 
-    const unmarshallOptions = {
-      wrapNumbers: false,
-    };
-
-    const translateConfig = { marshallOptions, unmarshallOptions };
-    tableDefinition = JSON.parse(fs.readFileSync('../database/migrations.json', 'utf8'));
-
-    startedContainer = await new GenericContainer('amazon/dynamodb-local').withExposedPorts(8000).start();
-    dbClient = new DynamoDBClient({
-      region: process.env.AWS_REGION,
-      endpoint: `http://localhost:${startedContainer.getMappedPort(8000)}`,
-    });
-
-    dbDocumentClient = DynamoDBDocumentClient.from(dbClient, translateConfig);
-    await dbClient.send(new CreateTableCommand(tableDefinition));
+    const { dbClient: _dbClient, dbDocumentClient: _dbDocumentClient } = await useDatabaseConnection(startedContainer);
+    dbClient = _dbClient;
+    dbDocumentClient = _dbDocumentClient;
   }, 30000);
 
   afterAll(async () => {
-    await dbDocumentClient.destroy();
-    await dbClient.destroy();
-    await startedContainer.stop();
+    await Promise.allSettled([dbDocumentClient.destroy(), dbClient.destroy(), startedContainer.stop()]);
   });
 
   beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
+    await createTestTable(dbClient);
+
+    moduleFixture = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe());
     await app.init();
   });
 
-  it('creates an account', async () => {
-    request(app.getHttpServer().post('/accounts')).send({ name: 'test' }).expect(201);
+  afterEach(async () => {
+    await deleteTestTable(dbClient);
+    await app.close();
+  });
+
+  it('creates an account successfully', async () => {
+    // given
+    const { userId, token } = await useAuth(moduleFixture);
+    const queryBus = moduleFixture.get(QueryBus);
+    const createAccountData = {
+      ownerFullName: 'Test Account',
+      number: 237482374,
+    };
+
+    // when
+    const result = request(app.getHttpServer())
+      .post('/accounts')
+      .set('Authorization', `Bearer ${token}`)
+      .send(createAccountData);
+
+    // then
+    result.expect(201);
+    const { accountId } = (await result).body;
+    expect(accountId).not.toBeUndefined();
+    const accountAggregate: Account = await queryBus.execute(new GetAccountBalanceQuery(userId, accountId));
+    expect(accountAggregate).toMatchObject({
+      id: accountId,
+      userId,
+      ownerFullName: 'Test Account',
+      number: 237482374,
+      balance: 0,
+    });
+  });
+
+  it('fails to create account due to input validation', async () => {
+    // given
+    const { token } = await useAuth(moduleFixture);
+    const createAccountData = {
+      number: 237482374,
+    };
+
+    // when
+    const result = request(app.getHttpServer())
+      .post('/accounts')
+      .set('Authorization', `Bearer ${token}`)
+      .send(createAccountData);
+
+    // then
+    result.expect(400);
+  });
+
+  it('gets account balance successfully', async () => {
+    // given
+    const { token } = await useAuth(moduleFixture);
+    const createAccountData = {
+      ownerFullName: 'Test Account',
+      number: 237482374,
+    };
+
+    const createResult = await request(app.getHttpServer())
+      .post('/accounts')
+      .set('Authorization', `Bearer ${token}`)
+      .send(createAccountData);
+
+    const { accountId } = createResult.body;
+
+    // when
+    const result = request(app.getHttpServer())
+      .get(`/accounts/${accountId}/balance`)
+      .set('Authorization', `Bearer ${token}`);
+
+    // then
+    result.expect(200);
+    const { balance } = (await result).body;
+    expect(balance).toBe(0);
+  });
+
+  it('fails to get account balance due to invalid account id', async () => {
+    // given
+    const { token } = await useAuth(moduleFixture);
+
+    // when
+    const result = request(app.getHttpServer())
+      .get(`/accounts/invalid-account-id/balance`)
+      .set('Authorization', `Bearer ${token}`);
+
+    // then
+    await result.expect(404);
+  });
+
+  it('fails to get account balance due to unauthorized access', async () => {
+    // given
+    const { token } = await useAuth(moduleFixture);
+    const createAccountData = {
+      ownerFullName: 'Test Account',
+      number: 237482374,
+    };
+
+    const createResult = await request(app.getHttpServer())
+      .post('/accounts')
+      .set('Authorization', `Bearer ${token}`)
+      .send(createAccountData);
+
+    const { accountId } = createResult.body;
+
+    // when
+    const result = request(app.getHttpServer())
+      .get(`/accounts/${accountId}/balance`)
+      .set('Authorization', `Bearer invalid-token`);
+
+    // then
+    await result.expect(401);
   });
 });
-
-// describe('AppController (e2e)', () => {
-//   let app: INestApplication;
-
-//   beforeEach(async () => {
-//     const moduleFixture: TestingModule = await Test.createTestingModule({
-//       imports: [AppModule],
-//     }).compile();
-
-//     app = moduleFixture.createNestApplication();
-//     await app.init();
-//   });
-
-//   it('/ (GET)', () => {
-//     return request(app.getHttpServer()).get('/').expect(200).expect('Hello World!');
-//   });
-// });

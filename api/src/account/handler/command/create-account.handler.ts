@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CreateAccountCommand } from 'src/account/command/create-account.command';
-import { ACCOUNT_CREATED_EVENT, AccountCreatedEvent } from 'src/account/event/account-created.event';
-import { EventStorageService } from 'src/shared/event-store/service';
+import { CreateAccountCommand } from '../../../account/command/create-account.command';
+import { ACCOUNT_CREATED_EVENT, AccountCreatedEvent } from '../../../account/event/account-created.event';
+import { EventStorageService } from '../../../shared/event-store/service';
 
 @Injectable()
 @CommandHandler(CreateAccountCommand)

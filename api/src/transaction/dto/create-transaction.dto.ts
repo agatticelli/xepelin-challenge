@@ -1,4 +1,4 @@
-import { IsNumber, IsNotEmpty, IsEnum } from 'class-validator';
+import { IsNumber, IsNotEmpty, IsEnum, IsString } from 'class-validator';
 
 export enum TransactionType {
   DEPOSIT = 'DEPOSIT',
@@ -14,7 +14,7 @@ export class CreateTransactionDTO {
   @IsNotEmpty()
   type: TransactionType;
 
-  @IsNumber()
+  @IsString()
   @IsNotEmpty()
   accountId: number;
 }
