@@ -24,7 +24,7 @@ services:
       AWS_ACCESS_KEY_ID: x
       AWS_SECRET_ACCESS_KEY: x
 
-  backend:
+  api:
     build:
       context: ./api
       dockerfile: Dockerfile
@@ -35,12 +35,24 @@ services:
       AWS_SECRET_ACCESS_KEY: x
       TABLE_NAME: accounts
     ports:
-      - '3000:3000'
+      - '4000:4000'
     depends_on:
       - dynamodb
     volumes:
       - ./api/src:/app/src
-
+  
+  # app:
+  #   build:
+  #     context: ./app
+  #     dockerfile: Dockerfile
+  #   environment:
+  #     API_URL: http://api:4000
+  #   ports:
+  #     - '3000:3000'
+  #   depends_on:
+  #     - api
+  #   volumes:
+  #     - ./app:/app
 
 volumes:
   dynamodb-data:

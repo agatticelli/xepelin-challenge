@@ -6,7 +6,7 @@
 ### Run locally
 In order to run both backend and frontend locally, you just need to run
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 ### Restart DB status
@@ -21,6 +21,11 @@ docker compose restart # restart other containers
 In order to run tests, just run
 ```bash
 yarn test:e2e
+```
+If this command failes due to timeout the first time, it can be because it timeouts before dynamodb docker image is fully downloaded.
+If this is the case, then run
+```bash
+docker compose up
 ```
 
 ## Design decisions

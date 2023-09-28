@@ -1,6 +1,6 @@
 FROM node:18-alpine
 
-EXPOSE 4000
+EXPOSE 3000
 WORKDIR /app
 
 COPY package.json .
@@ -10,4 +10,4 @@ RUN yarn
 
 COPY . .
 
-CMD [ "yarn" , "start:dev"]
+CMD [ "yarn" , "dev"]
